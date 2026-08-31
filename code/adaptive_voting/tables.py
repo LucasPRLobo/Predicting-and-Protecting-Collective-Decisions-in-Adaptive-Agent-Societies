@@ -73,3 +73,23 @@ def build_tables(G):
 
     
     return (pi, leaks, cuts)
+
+
+def island_outcomes(island, x):
+    """
+    The three ending probabilities of a society already split into 
+    these islands, frozen (each island decides on its own;
+    global consensus needs all islands to agree).
+    """
+    x = np.asarray(x)
+
+    P_plus = 1
+    P_minus = 1
+
+    for v in island:
+        P_plus *= (1 + v @ x)/2
+        P_minus *= (1 - v @ x)/2
+
+    P_none = 1 - (P_plus + P_minus)
+
+    return (P_plus, P_minus, P_none)
