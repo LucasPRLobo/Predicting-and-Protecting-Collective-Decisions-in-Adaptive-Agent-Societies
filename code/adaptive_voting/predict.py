@@ -32,7 +32,12 @@ def predict(G, x0, p, n_runs=2000, rng=None, a=0.038) -> dict:
     a : the second order split coefficient per rewire; 0.038 was
         measured on sparse societies at N <= 40 (its derived form is
         the g tilde of the paper); a = 0 gives the pure first order
-        prediction.
+        prediction. The term is applied only when the society has
+        single rewire cuts (f1_none > 0); on societies without cuts
+        splitting is a many rewire effect that this constant does not
+        describe (dense societies: negligible; rings: underpredicted,
+        the derived g tilde is needed). The output field
+        second_order_applied says which case applied.
 
     Returns
     -------
@@ -69,7 +74,14 @@ def predict(G, x0, p, n_runs=2000, rng=None, a=0.038) -> dict:
     # (later rewires cut a society the earlier ones carved along its
     # opinion boundary; a = 0.038 measured on sparse societies, N <= 40;
     # a = 0 gives the pure first order prediction).
-    P_none_raw = p * estimates["f1_none"] + a * rho**2 / 2
+    # The second order term is applied only when the society has single
+    # rewire cuts (f1_none > 0): a was measured on such societies, and on
+    # dense societies without cuts splitting needs many rewires and the
+    # term overpredicts (playground finding, 2026-08-30). Known exception:
+    # rings, which split at the second rewire without any single cut; the
+    # derived coefficient g tilde of the paper covers them, a does not.
+    second_order = estimates["f1_none"] > 0.0
+    P_none_raw = p * estimates["f1_none"] + (a * rho**2 / 2 if second_order else 0.0)
 
     # the remainder: the three endings are exhaustive.
     P_minus_raw = 1.0 - P_plus_raw - P_none_raw
@@ -92,6 +104,7 @@ def predict(G, x0, p, n_runs=2000, rng=None, a=0.038) -> dict:
         "f1_none": estimates["f1_none"], "f1_none_se": estimates["f1_none_se"],
         "E_D": estimates["E_D"], "E_tau": estimates["E_tau"],
         "rho": rho, "certificate": certificate,
+        "second_order_applied": bool(second_order),
         "p": p, "n_runs": n_runs, "a": a,
     }
 
