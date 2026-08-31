@@ -20,7 +20,9 @@ def validate(G, x):
 
     G is coerced to a float array and x to an int array; the coerced
     (G, x) is returned so callers use it. Raises ValueError naming the
-    violated condition otherwise.
+    violated condition otherwise. Note: the returned G may share memory
+    with the input (asarray does not copy an already float array);
+    callers that mutate must copy.
     """
     G = np.asarray(G, dtype=float)
     x = np.asarray(x)
