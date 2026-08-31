@@ -1,4 +1,6 @@
 import numpy as np
+from .society import voting_power, closed_classes, _stationary, TOL
+
 
 def apply_rewire(G, i, j, k):
     G_prime = G.copy()
@@ -37,3 +39,37 @@ def rewire_neighbours(G):
     
     else:
         return legal_rewires
+    
+
+def build_tables(G):
+    # Compute pi
+    pi = voting_power(G)
+
+    # Get G's legal rewires moves:
+    rewires = rewire_neighbours(G)
+
+    leaks = dict()
+    cuts = dict()
+
+    for (i,j,k) in rewires:
+        Gp = apply_rewire(G, i ,j, k)
+        Gp_cc = closed_classes(Gp)
+
+        if len(Gp_cc) == 1:
+            leak = voting_power(Gp) - pi
+            leak[np.abs(leak) < TOL] = 0.0
+
+            if abs(leak.sum()) > TOL:
+                raise ArithmeticError(f"leak of move {(i, j, k)} sums to {leak.sum():.2e}")
+            leaks[(i, j, k)] = leak 
+
+        else:
+            islands = []
+            for S in Gp_cc:
+                pi_island = np.zeros(G.shape[0])
+                pi_island[S] = _stationary(Gp[np.ix_(S,S)])
+                islands.append(pi_island)
+            cuts[(i,j,k)] = islands
+
+    
+    return (pi, leaks, cuts)
