@@ -48,7 +48,7 @@ def validate(G, x):
 def closed_classes(G):
     """Closed communicating classes of the positive-weight digraph of G:
     the strongly connected components with no edge leaving them.
-    Returns a list of node sets."""
+    Returns a sorted list of sorted lists of agent indices."""
     
     adj_mat = (G > 0).astype(float)
     di_graph = nx.DiGraph(adj_mat)
@@ -74,20 +74,36 @@ def voting_power(G):
     n_classes = len(closed_classes(G))
     if n_classes != 1:
         raise ValueError(f"voting_power needs exactly one closed class; found {n_classes}")
-    eigen_vals, eigen_vecs = np.linalg.eig(G.T)
+    
+    return _stationary(G)
+
+def _stationary(M):
+    """Stationary distribution of any row stochastic matrix M that is
+    assumed to have a unique one (a single closed class). Performs NO
+    class checking by design: voting_power checks the whole graph
+    before calling, and the island solver of build_tables passes
+    sub-matrices that are single classes by construction. Entries below
+    TOL are assigned exact zero (module convention), and the result is
+    self checked against pi M = pi."""
+    eigen_vals, eigen_vecs = np.linalg.eig(M.T)
     k = int(np.argmin(np.abs(eigen_vals - 1)))
     w = np.real(eigen_vecs[:, k])
     s = w.sum()
     if abs(s) < 1e-9:
         raise ArithmeticError("eigenvector sums to ~0 (degenerate eigenvalue 1)")
     pi = w / s
+    if pi.min() < -TOL:              # a wrong eigenvector pick, not float dust
+        raise ArithmeticError(f"stationary vector has a negative entry: {pi.min():.2e}")
     pi[np.abs(pi) < TOL] = 0.0       # exact zero for agents outside the closed class
     pi = pi / pi.sum()
     # self-check of the defining property: catches a forgotten
-    # transpose or a decaying-eigenvector pick instantly
-    if not np.allclose(pi @ G, pi):
-        raise ArithmeticError("pi G != pi: transpose or selection bug")
+    # transpose or a decaying-eigenvector pick instantly; lives here so
+    # island vectors are verified too
+    if not np.allclose(pi @ M, pi):
+        raise ArithmeticError("pi M != pi: transpose or selection bug")
     return pi
+
+
 
 def h0(G, x):
     """The static winning probability of +1: (1 + pi . x) / 2
