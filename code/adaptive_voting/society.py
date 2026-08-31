@@ -57,7 +57,40 @@ def closed_classes(G):
     closed = []
 
     for S in scc:
-        targets = np.flatnonzero(G[list(S)].sum(axis=0))
-        if set(targets) <= S:
-            closed.append(S)
-    return closed
+        members = sorted(int(i) for i in S)
+        targets = {int(t) for t in np.flatnonzero(G[members].sum(axis=0))}
+        if targets <= set(members):
+            closed.append(members)
+    return sorted(closed)
+
+
+def voting_power(G):
+    """The stationary distribution pi of G: pi G = pi, entries summing
+    to one. Voting power is undefined when G has more than one closed
+    class (no unique stationary distribution), so that case raises.
+    Agents outside the closed class have pi_i exactly zero: entries
+    below TOL are computed values assigned to zero (module docstring
+    convention), then the vector is renormalised."""
+    n_classes = len(closed_classes(G))
+    if n_classes != 1:
+        raise ValueError(f"voting_power needs exactly one closed class; found {n_classes}")
+    eigen_vals, eigen_vecs = np.linalg.eig(G.T)
+    k = int(np.argmin(np.abs(eigen_vals - 1)))
+    w = np.real(eigen_vecs[:, k])
+    s = w.sum()
+    if abs(s) < 1e-9:
+        raise ArithmeticError("eigenvector sums to ~0 (degenerate eigenvalue 1)")
+    pi = w / s
+    pi[np.abs(pi) < TOL] = 0.0       # exact zero for agents outside the closed class
+    pi = pi / pi.sum()
+    # self-check of the defining property: catches a forgotten
+    # transpose or a decaying-eigenvector pick instantly
+    if not np.allclose(pi @ G, pi):
+        raise ArithmeticError("pi G != pi: transpose or selection bug")
+    return pi
+
+def h0(G, x):
+    """The static winning probability of +1: (1 + pi . x) / 2
+    (Cooper and Rivera, in our encoding)."""
+    pi_G = voting_power(G)
+    return (1 + pi_G @ np.asarray(x)) / 2
