@@ -82,6 +82,32 @@ def frozen_run(G, x0, tables, rng, max_steps=10_000_000):
             
 
 def frozen_estimates(G, x0, tables, n_runs, rng):
+    """
+    Returns
+    -------
+    dict with the frozen run estimates for the state (G, x0):
+
+    h1        first order winner coefficient: the expected total voting
+              power leaked to the +1 side over one frozen game, so that
+              P(+1) is approximately h0 + p * h1 (Theorem 3). Unbiased.
+
+    h1_se     Monte Carlo standard error of h1 over the n_runs games.
+
+    f1_none   first order split coefficient: the expected total split
+              probability created by the cutting rewires over one frozen
+              game, so that P(no consensus) is approximately p * f1_none.
+
+    f1_none_se  Monte Carlo standard error of f1_none.
+
+    E_D       expected number of rewire opportunities per game (a 
+              disagreement whose agent has somewhere to rewire to). This
+              is the count behind the certificate: rho = p * E_D is the
+              expected number of rewires per game.
+
+    E_tau     expected number of steps of a frozen game (its consensus
+              time). Reported for cost accounting and diagnostics.
+    """
+
     G, x0 = validate(G, x0)
 
     winner_sums = []
@@ -102,11 +128,11 @@ def frozen_estimates(G, x0, tables, n_runs, rng):
     split_sums = np.asarray(split_sums)
 
     return {
-        "h1": winner_sums.mean(),
+        "h1": winner_sums.mean(), 
         "h1_se": winner_sums.std(ddof=1) / np.sqrt(n_runs),
         "f1_none": split_sums.mean(),
         "f1_none_se": split_sums.std(ddof=1) / np.sqrt(n_runs),
-        "E_D": D_sums / n_runs,
+        "E_D": D_sums / n_runs, 
         "E_tau": tau / n_runs,
     }
     
