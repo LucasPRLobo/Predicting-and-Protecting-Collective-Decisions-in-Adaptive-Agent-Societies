@@ -8,7 +8,7 @@ from .frozen import frozen_estimates
 def _clip(v):
     return min(max(v, 0.0), 1.0)
 
-def predict(G, x0, p, n_runs=2000, rng=None, a=0.038) -> dict:
+def predict(G, x0, p, n_runs=2000, rng=None, a=0.038, tables=None, estimates=None) -> dict:
     """Predict the three endings of the adaptive process from the
     starting state, before running it.
 
@@ -55,8 +55,11 @@ def predict(G, x0, p, n_runs=2000, rng=None, a=0.038) -> dict:
 
     G, x0 = validate(G, x0)
 
-    tables = build_tables(G)
-    estimates = frozen_estimates(G, x0, tables, n_runs, rng)
+    if tables is None:
+        tables = build_tables(G)
+         
+    if estimates is None:    
+        estimates = frozen_estimates(G, x0, tables, n_runs, rng)
 
     pi, leaks, cuts = tables
     h0_val = (1 + pi @ x0) / 2
